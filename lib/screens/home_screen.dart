@@ -5,6 +5,10 @@ import 'package:nanashi_schedule/models/videos_list.dart';
 import 'package:nanashi_schedule/utils/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
+import "package:intl/intl.dart";
+import 'package:intl/date_symbol_data_local.dart';
+
+
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -73,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Item _item;
   bool _loading;
   String _videosId;
+  int day;
 
 
 
@@ -184,7 +189,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         body: Container(
           child: StreamBuilder(
-            stream: Firestore.instance.collection('videos').snapshots(),
+            //今日の日付を取得1日前から現在までのデータを持ってくる
+            //islessthanのところを計算する
+            //そもそもfirestoreにsetするときにdayと言う項目を作ってislessthanのところに関数をおく
+            //その関数で今日の日付を取得してそこからマイナス２したものをreturn
+            stream: Firestore.instance.collection('videos')
+                .where('scheduledStartTime', isGreaterThanOrEqualTo: _twoDaysAgo())
+                .orderBy("scheduledStartTime").snapshots(),
             builder: (BuildContext context,
                 AsyncSnapshot<QuerySnapshot> snapshot) {
               if (!snapshot.hasData)
@@ -197,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisSpacing: 4,
                   crossAxisSpacing: 4,
                   crossAxisCount: 2,
-                  childAspectRatio: 0.6,
+                  childAspectRatio: 0.85,
                 ),
                 itemCount: snapshot.data.documents.length,
                 itemBuilder: (BuildContext context, int index) {
@@ -217,9 +228,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             //公開時間
                             _intoString(snapshot.data.documents[index]['scheduledStartTime']),
                             //サムネ
+                            //snapshot.data.documents[index]['thumbnailUrl']にhqdefaultがあれば
                             Image(
                               image: CachedNetworkImageProvider(
-                                snapshot.data.documents[index]['thumbnailUrl'],
+                                _checkUrl(snapshot.data.documents[index]['thumbnailUrl']),
                               ),
                               fit: BoxFit.cover,
                             ),
@@ -252,23 +264,25 @@ class _HomeScreenState extends State<HomeScreen> {
           color: Colors.blueGrey[900],
           child: Row(
             mainAxisAlignment: MainAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
+            mainAxisSize: MainAxisSize.max,
+            children: <Widget>[
               CircleAvatar(
-                backgroundImage: CachedNetworkImageProvider(
-                  video['iconUrl'],
-                ),
+                backgroundImage: CachedNetworkImageProvider(video['iconUrl'],),
                 radius: 27,
               ),
-              Text(
-                video['channelTitle'],
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w400,
+              Expanded(
+                child: Container(
+                  child: Text(
+                    video['channelTitle'],
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    textAlign: TextAlign.start,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                textAlign: TextAlign.start,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -288,9 +302,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Turn datetime into String
   _intoString(Timestamp scheduleTime){
+    initializeDateFormatting("ja_JP");
     DateTime toDatetime = scheduleTime.toDate();
-    String textTime = '公開時間：${toDatetime.hour}:${toDatetime.minute}';
-    return Text(textTime,
+    //datetimeを任意のフォーマットに整形する
+    var formatter = new DateFormat('yyyy/MM/dd(E) HH:mm', "ja_JP");
+    //(DateFormat('MM/dd/yyyy HH:mm')).format(toDatetime)
+    var formatted = formatter.format(toDatetime); // DateからString
+    List splited = formatted.split(' ');
+    String toText = '公開時間：${splited[1]}';
+    //String toText = '公開時間：${toDatetime.hour}:${toDatetime.minute}';
+    return Text(toText,
       style: TextStyle(
         color: Colors.white,
         fontSize: 15,
@@ -299,6 +320,17 @@ class _HomeScreenState extends State<HomeScreen> {
       textAlign: TextAlign.start,
       overflow: TextOverflow.ellipsis,
     );
+  }
+
+  _twoDaysAgo(){
+    var twoDaysAgo = DateTime.now().add(Duration(days: 2) * -1);
+    var threshold   = DateTime(twoDaysAgo.year, twoDaysAgo.month, twoDaysAgo.day+1, 00, 00);
+    return threshold;
+  }
+
+  _checkUrl(String url){
+    url = url.replaceAll(RegExp('hqdefault'), 'mqdefault');
+    return url;
   }
 }
 
