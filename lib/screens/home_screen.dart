@@ -188,70 +188,58 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         body: Container(
-          child: StreamBuilder(
-            //今日の日付を取得1日前から現在までのデータを持ってくる
-            //islessthanのところを計算する
-            //そもそもfirestoreにsetするときにdayと言う項目を作ってislessthanのところに関数をおく
-            //その関数で今日の日付を取得してそこからマイナス２したものをreturn
-            stream: Firestore.instance.collection('videos')
-                .where('scheduledStartTime', isGreaterThanOrEqualTo: _twoDaysAgo())
-                .orderBy("scheduledStartTime").snapshots(),
-            builder: (BuildContext context,
-                AsyncSnapshot<QuerySnapshot> snapshot) {
-              if (!snapshot.hasData)
-                return Center(
-                  child: CircularProgressIndicator(),
-                );
+          //左右padding
+          margin: EdgeInsets.fromLTRB(4, 0, 4, 0),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                _headLine(-1),
+                StreamBuilder(
+                  stream: Firestore.instance.collection('videos')
+                      .where('scheduledStartTime', isGreaterThanOrEqualTo: _dateParam(-1))
+                      .where('scheduledStartTime', isLessThan: _dateParam(0))
+                      .orderBy("scheduledStartTime").snapshots(),
+                  builder: (BuildContext context,
+                      AsyncSnapshot<QuerySnapshot> snapshot) {
+                    if (!snapshot.hasData)
+                      return Center(
+                        child: CircularProgressIndicator(),
+                      );
 
-              return GridView.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  mainAxisSpacing: 4,
-                  crossAxisSpacing: 4,
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.85,
-                ),
-                itemCount: snapshot.data.documents.length,
-                itemBuilder: (BuildContext context, int index) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: Colors.blueGrey[900],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: EdgeInsets.all(8.0),
-                    child: GestureDetector(
-                        onTap: () {
-                          _launchURL(snapshot.data.documents[index]['videoUrl'], snapshot.data.documents[index]['channelUrl']);
-                        },
-                        child: Column(
-                          children: <Widget>[
-                            _buildInfoView(snapshot.data.documents[index]),
-                            //公開時間
-                            _intoString(snapshot.data.documents[index]['scheduledStartTime']),
-                            //サムネ
-                            //snapshot.data.documents[index]['thumbnailUrl']にhqdefaultがあれば
-                            Image(
-                              image: CachedNetworkImageProvider(
-                                _checkUrl(snapshot.data.documents[index]['thumbnailUrl']),
-                              ),
-                              fit: BoxFit.cover,
-                            ),
-                            //動画タイトル
-                            Text(snapshot.data.documents[index]['title'],
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w400,
-                              ),
-                              maxLines: 2,
-                              textAlign: TextAlign.start,
-                              overflow: TextOverflow.ellipsis,
-                            ),//ここは２行で表示してはみ出るところは非表示にする。あとでやる
-                          ],
-                        )),
-                  );
-                },
-              );
-          }),
+                    return _mainView(snapshot);
+                }),
+                _headLine(0),
+                StreamBuilder(
+                    stream: Firestore.instance.collection('videos')
+                        .where('scheduledStartTime', isGreaterThanOrEqualTo: _dateParam(0))
+                        .where('scheduledStartTime', isLessThan: _dateParam(1))
+                        .orderBy("scheduledStartTime").snapshots(),
+                    builder: (BuildContext context,
+                        AsyncSnapshot<QuerySnapshot> snapshot) {
+                      if (!snapshot.hasData)
+                        return Center(
+                          child: CircularProgressIndicator(),
+                        );
+
+                      return _mainView(snapshot);
+                    }),
+                _headLine(1),
+                StreamBuilder(
+                    stream: Firestore.instance.collection('videos')
+                        .where('scheduledStartTime', isGreaterThanOrEqualTo: _dateParam(1))
+                        .orderBy("scheduledStartTime").snapshots(),
+                    builder: (BuildContext context,
+                        AsyncSnapshot<QuerySnapshot> snapshot) {
+                      if (!snapshot.hasData)
+                        return Center(
+                          child: CircularProgressIndicator(),
+                        );
+
+                      return _mainView(snapshot);
+                    }),
+              ],
+            ),
+          ),
         ),
       );
   }
@@ -261,7 +249,8 @@ class _HomeScreenState extends State<HomeScreen> {
         //? CircularProgressIndicator():
     return
         Container(
-          color: Colors.blueGrey[900],
+
+          color: Colors.blueGrey[800],
           child: Row(
             mainAxisAlignment: MainAxisAlignment.start,
             mainAxisSize: MainAxisSize.max,
@@ -322,15 +311,92 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  _twoDaysAgo(){
-    var twoDaysAgo = DateTime.now().add(Duration(days: 2) * -1);
-    var threshold   = DateTime(twoDaysAgo.year, twoDaysAgo.month, twoDaysAgo.day+1, 00, 00);
+  _dateParam(int param){
+    var today = DateTime.now();
+    var threshold   = DateTime(today.year, today.month, today.day+param, 00, 00);
     return threshold;
   }
 
   _checkUrl(String url){
     url = url.replaceAll(RegExp('hqdefault'), 'mqdefault');
     return url;
+  }
+
+  _mainView(var snapshot){
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        mainAxisSpacing: 4,
+        crossAxisSpacing: 4,
+        crossAxisCount: 2,
+        childAspectRatio: 0.83,
+      ),
+      itemCount: snapshot.data.documents.length,
+      itemBuilder: (BuildContext context, int index) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.blueGrey[800],
+            borderRadius: BorderRadius.circular(10),
+          ),
+          padding: EdgeInsets.all(8.0),
+          child: GestureDetector(
+              onTap: () {
+                _launchURL(snapshot.data.documents[index]['videoUrl'], snapshot.data.documents[index]['channelUrl']);
+              },
+              child: Column(
+                children: <Widget>[
+                  _buildInfoView(snapshot.data.documents[index]),
+                  //公開時間
+                  _intoString(snapshot.data.documents[index]['scheduledStartTime']),
+                  //サムネ
+                  //snapshot.data.documents[index]['thumbnailUrl']にhqdefaultがあれば
+                  Image(
+                    image: CachedNetworkImageProvider(
+                      _checkUrl(snapshot.data.documents[index]['thumbnailUrl']),
+                    ),
+                    fit: BoxFit.cover,
+                  ),
+                  //動画タイトル
+                  Text(snapshot.data.documents[index]['title'],
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    maxLines: 2,
+                    textAlign: TextAlign.start,
+                    overflow: TextOverflow.ellipsis,
+                  ),//ここは２行で表示してはみ出るところは非表示にする。あとでやる
+                ],
+              )),
+        );
+      },
+    );
+  }
+
+  Widget _headLine(int param){
+    final DateTime today = DateTime.now();
+    final DateTime date = DateTime(today.year, today.month, today.day+param, 00, 00);
+    final List<String> weekDay = ['月','火','水','木','金','土','日'];
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.blueGrey[800],
+        borderRadius: BorderRadius.circular(10),
+      ),
+      height: 50.0,
+      width: double.infinity,
+      padding: EdgeInsets.all(10.0),
+      margin: EdgeInsets.fromLTRB(1,4,1,4),
+      child: Text("${date.month.toString()}/${date.day.toString()} (${weekDay[date.weekday-1]})",
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
   }
 }
 
