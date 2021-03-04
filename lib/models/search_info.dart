@@ -29,6 +29,7 @@ class SearchInfo {
     regionCode: json["regionCode"],
     //pageInfo: PageInfo.fromJson(json["pageInfo"]),
     items: List<Item>.from(json["items"].map((x) => Item.fromJson(x))),
+    //items: json["items"] != null ? List<Item>.from(json["items"].map((x) => Item.fromJson(x))): [],
   );
 
   Map<String, dynamic> toJson() => {
