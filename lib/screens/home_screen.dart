@@ -105,6 +105,16 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loading;
   int day;
   String text;
+  /*
+  final controller1 = ScrollController();
+  final controller2 = ScrollController();
+  final controller3 = ScrollController();
+  var height;
+  int yesterdayLength;
+  int oldLive = -1;
+  int whichDay;
+   */
+  double headLineHeight = 50.0;
 
 
   @override
@@ -222,26 +232,24 @@ class _HomeScreenState extends State<HomeScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                _headLine(0),
+                _headLine(streamParam()-1),
                 StreamBuilder(
                   stream: Firestore.instance.collection('videos')
-                      .where('scheduledStartTime', isGreaterThanOrEqualTo: _dateParam(0))
-                      .where('scheduledStartTime', isLessThan: _dateParam(1))
+                      .where('scheduledStartTime', isGreaterThanOrEqualTo: _dateParam(streamParam()-1))
+                      .where('scheduledStartTime', isLessThan: _dateParam(streamParam()+0))
                       .orderBy("scheduledStartTime").snapshots(),
-                  builder: (BuildContext context,
-                      AsyncSnapshot<QuerySnapshot> snapshot) {
+                  builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
                     if (!snapshot.hasData)
                       return Center(
                         child: CircularProgressIndicator(),
                       );
-
                     return _mainView(snapshot);
                 }),
-                _headLine(1),
+                _headLine(streamParam()+0),
                 StreamBuilder(
                     stream: Firestore.instance.collection('videos')
-                        .where('scheduledStartTime', isGreaterThanOrEqualTo: _dateParam(1))
-                        .where('scheduledStartTime', isLessThan: _dateParam(2))
+                        .where('scheduledStartTime', isGreaterThanOrEqualTo: _dateParam(streamParam()+0))
+                        .where('scheduledStartTime', isLessThan: _dateParam(streamParam()+1))
                         .orderBy("scheduledStartTime").snapshots(),
                     builder: (BuildContext context,
                         AsyncSnapshot<QuerySnapshot> snapshot) {
@@ -252,10 +260,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       return _mainView(snapshot);
                     }),
-                _headLine(2),
+                _headLine(streamParam()+1),
                 StreamBuilder(
                     stream: Firestore.instance.collection('videos')
-                        .where('scheduledStartTime', isGreaterThanOrEqualTo: _dateParam(2))
+                        .where('scheduledStartTime', isGreaterThanOrEqualTo: _dateParam(streamParam()+1))
                         .orderBy("scheduledStartTime").snapshots(),
                     builder: (BuildContext context,
                         AsyncSnapshot<QuerySnapshot> snapshot) {
@@ -271,6 +279,17 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       );
+  }
+
+  streamParam(){
+    var today = DateTime.now();
+    if(today.hour >= 4){
+      int key = 1;
+      return key;
+    } else{
+      int key = 0;
+      return key;
+    }
   }
 
   _buildInfoView(video){
@@ -310,7 +329,11 @@ class _HomeScreenState extends State<HomeScreen> {
   /// 第2引数のURLを開く。開けないURLだった場合は第2引数のURLを開く
   Future _launchURL(String url, String secondUrl) async {
     if (await canLaunch(url)) {
-      await launch(url);
+      await launch(url,
+        forceSafariVC: false,
+        forceWebView: false,
+        universalLinksOnly: true,
+      );
     } else if (secondUrl != null && await canLaunch(secondUrl)) {
       await launch(secondUrl);
     } else {
@@ -379,7 +402,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   //公開時間
                   _intoString(snapshot.data.documents[index]['scheduledStartTime']),
                   //サムネ
-                  //snapshot.data.documents[index]['thumbnailUrl']
                   _displayLive(snapshot.data.documents[index]['videoStatus'], snapshot.data.documents[index]['thumbnailUrl'] ),
                   //動画タイトル
                   Text(snapshot.data.documents[index]['title'],
@@ -453,7 +475,7 @@ class _HomeScreenState extends State<HomeScreen> {
         color: Colors.blueGrey[800],
         borderRadius: BorderRadius.circular(10),
       ),
-      height: 50.0,
+      height: headLineHeight,
       width: double.infinity,
       padding: EdgeInsets.all(10.0),
       margin: EdgeInsets.fromLTRB(1,4,1,4),
@@ -467,5 +489,68 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+
+  /*
+  void jumpToItem(int oldLive, int whichDay) {
+    if(whichDay == 1) {
+      rotateController(whichDay).jumpTo(height * (oldLive / 2).ceil());
+    } else{
+      rotateController(whichDay).jumpTo(height * (oldLive / 2).ceil());
+    }
+  }
+
+  oldestLive(int index, String liveStatus, int controllerParam){
+    if(liveStatus == 'live'){
+      if(oldLive == -1){
+        oldLive = index;
+        whichDay = controllerParam;
+      }
+    }
+    //ここに昨日か今日のどちらにliveがあったのか判断する処理をしたい
+  }
+
+  rotateController(int param){
+    if(param == 1){
+      return controller1;
+    } else if(param == 2){
+      return controller2;
+    } else{
+      return controller3;
+    }
+  }
+   */
 }
 
+
+/*
+  indexでjumptoする
+  １番古いlive中の配信のindexを記録する
+  controllerを二つ用意して
+  昨日の配信にlive中がなければ今日のcontrollerを発動する
+  日付ヘッダー+上下のパディング+((一つのアイテムの高さ+下の隙間)*(アイテムの数/2).繰り上げ)
+  昨日の配信にliveがなければ上のやつに+日付の上の大きめの隙間+日付ヘッダー+その下のパディング+また上の計算式
+  これはoffsetを求めているはず。あとはjumpto
+  日付ヘッダー：50+padding10*2,
+  要素の高さ：context.size.height+下パディング4,
+  昨日のアイテムの数：(snapshot.data.documents.length/2).繰り上げ,
+  live中の配信があったら変数にindexを格納それ以降liveがあっても更新しないように
+  int oldLive = -1;
+  if(snapshot.data.documents[index]['videoStatus'] == 'live'){
+    oldLive = oldLive == -1 ? index: oldLive;
+  }
+  (yesterdayLength/2).ceil()//縦のアイテムの数
+  height//1つの要素の高さ
+  //昨日のstreamBuilderの全長
+  double yesterdayHeight = height * (yesterdayLength/2).ceil() + headLineHeight*2
+  //paddingは一旦無視する
+  //live中の配信があるところの高さ
+  double todayHeight = height * (oldLive/2).ceil()
+  //いざジャンプ！！！
+  controller.jumpTo(yesterdayHeight + todayHeight);
+  もしかしてcontrollerごとに決まっているせつ
+  controller:controllerを改造する
+  //昨日か今日のどちらのコントローラを使うかを決める処理が必要
+
+
+*/
