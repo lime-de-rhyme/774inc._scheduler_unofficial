@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:nanashi_schedule/screens/home_screen.dart';
 
 
 void main(){
-  runApp(HomeApp(),);
+  WidgetsFlutterBinding.ensureInitialized();
+  //向き指定
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]).then((_) {
+    runApp(new HomeApp());
+  });
 }
 
 class HomeApp extends StatelessWidget{
@@ -11,7 +19,7 @@ class HomeApp extends StatelessWidget{
   @override
   Widget build(BuildContext context){
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: '774inc. schedule【非公式】',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Common.primaryColor,
