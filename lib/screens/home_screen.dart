@@ -25,6 +25,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<QuerySnapshot> nextDay;
   double headLineHeight = 50.0;
 
+  //childAspectRatioを機種の横幅に応じて変更するようにする
+
 
   @override
   void initState() {
@@ -150,21 +152,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 FutureBuilder<QuerySnapshot>(
                     future: today,
                     builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                      if (snapshot.data.documents.length > 0) {
-                        return _mainView(snapshot);
-                      } else{
+                      if(snapshot.data == null) {
                         return empty();
+                      } else if(snapshot.data.documents.length == 0){
+                        return empty();
+                      } else{
+                        return _mainView(snapshot);
                       }
                     }),
                 _headLine(streamParam()+1),
                 FutureBuilder<QuerySnapshot>(
                     future: nextDay,
                     builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                      if(snapshot.data == null) {
+                        return empty();
+                      } else if(snapshot.data.documents.length == 0){
+                        return empty();
+                      } else{
+                        return _mainView(snapshot);
+                      }
+                      /*
                       if (snapshot.data.documents.length > 0) {
                         return _mainView(snapshot);
                       } else{
                         return empty();
                       }
+                       */
                     }),
               ],
             ),
@@ -198,7 +211,6 @@ class _HomeScreenState extends State<HomeScreen> {
   _buildInfoView(video){
     return
         Container(
-
           color: Colors.blueGrey[800],
           child: Row(
             mainAxisAlignment: MainAxisAlignment.start,
@@ -275,6 +287,26 @@ class _HomeScreenState extends State<HomeScreen> {
     return url;
   }
 
+  childAspectRatio(){
+    final double width = MediaQuery.of(context).size.width;
+    print(width);
+    if(width == 428){
+      return 0.84;
+    } else if(width == 414){
+      return 0.82;
+    } else if(width == 390){
+      return 0.79;
+    } else if(width == 375){
+      return 0.78;
+    } else{
+      return 0.77;
+    }
+    //pro max 428/2=208 214:0.84
+    //8plus 414:0.82
+    //12pro 390/2=189 195:0.79
+    //mini  375/2=181.5 187:0.78
+  }
+
   _mainView(var snapshot){
     return GridView.builder(
       shrinkWrap: true,
@@ -283,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisSpacing: 4,
         crossAxisSpacing: 4,
         crossAxisCount: 2,
-        childAspectRatio: 0.83,
+        childAspectRatio: childAspectRatio(),
       ),
       itemCount: snapshot.data.documents.length,
       itemBuilder: (BuildContext context, int index) {
